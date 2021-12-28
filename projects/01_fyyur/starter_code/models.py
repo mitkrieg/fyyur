@@ -1,18 +1,10 @@
-from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from flask import Flask
-from flask_moment import Moment
 
 # ----------------------------------------------------------------------------#
-# App Config.
+# App + DB Config.
 # ----------------------------------------------------------------------------#
 
-app = Flask(__name__)
-moment = Moment(app)
-app.config.from_object("config")
-
-db = SQLAlchemy(app)
-mirgrate = Migrate(app, db)
+db = SQLAlchemy()
 
 # ----------------------------------------------------------------------------#
 # Models.
@@ -34,7 +26,7 @@ class Venue(db.Model):
     website = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean, nullable=False, default=True)
     seeking_description = db.Column(db.String(120))
-    shows = db.relationship("Show", backref="venue")
+    shows = db.relationship("Show", backref="venue", cascade="all, delete")
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -53,7 +45,7 @@ class Artist(db.Model):
     website = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean, nullable=False, default=True)
     seeking_description = db.Column(db.String(120))
-    shows = db.relationship("Show", backref="artist")
+    shows = db.relationship("Show", backref="artist", cascade="all, delete")
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
