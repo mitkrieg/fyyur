@@ -2,7 +2,6 @@
 # Imports
 # ----------------------------------------------------------------------------#
 
-import json
 import sys
 import dateutil.parser
 import babel
@@ -12,8 +11,6 @@ from logging import Formatter, FileHandler
 from flask import Flask
 from flask.json import jsonify
 from flask_moment import Moment
-from flask_wtf import Form
-from sqlalchemy.orm import exc
 from sqlalchemy.sql.elements import or_
 from sqlalchemy.sql.expression import false, join
 from sqlalchemy.sql.functions import now
@@ -22,7 +19,6 @@ from forms import *
 from datetime import datetime as dt
 from models import db, Show, Venue, Artist
 from flask_migrate import Migrate
-import os
 
 # ----------------------------------------------------------------------------#
 # App + Db Config
