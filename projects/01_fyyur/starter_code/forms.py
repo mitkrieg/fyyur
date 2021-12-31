@@ -185,7 +185,7 @@ class ArtistForm(Form):
         "phone",
         validators=[
             Regexp(
-                "^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$",
+                "^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}|\d{10}$",
                 message="Please submit valid phone number",
             )
         ],
