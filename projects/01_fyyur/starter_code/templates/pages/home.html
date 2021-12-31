@@ -22,6 +22,27 @@
 	<div class="col-sm-6 hidden-sm hidden-xs">
 		<img id="front-splash" src="{{ url_for('static',filename='img/front-splash.jpg') }}"
 			alt="Front Photo of Musical Band" />
+		<h3>New On Fyyur 🔥</h3>
+		<div class='col-sm-6'>
+			<h4>Artists</h4>
+			{% for artist in artists %}
+			<li>
+				<a href="/artists/{{artist.id}}">
+					<i class="fas fa-users"> {{ artist.name }}</i>
+				</a>
+			</li>
+			{% endfor %}
+		</div>
+		<div class='col-sm-6'>
+			<h4>Venues</h4>
+			{% for venue in venues %}
+			<li>
+				<a href="/venues/{{venue.id}}">
+					<i class="fas fa-music"> {{venue.name}}</i>
+				</a>
+			</li>
+			{% endfor %}
+		</div>
 	</div>
 </div>
 {% endblock %}

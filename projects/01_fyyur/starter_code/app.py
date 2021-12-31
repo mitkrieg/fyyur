@@ -15,6 +15,9 @@ from flask.json import jsonify
 from flask_moment import Moment
 from flask_wtf import Form
 from sqlalchemy.orm import exc
+from sqlalchemy.sql.elements import or_
+from sqlalchemy.sql.expression import join
+from sqlalchemy.sql.functions import now
 from werkzeug.wrappers import response
 from forms import *
 from datetime import datetime as dt
@@ -51,9 +54,32 @@ app.jinja_env.filters["datetime"] = format_datetime
 # ----------------------------------------------------------------------------#
 
 
+def get_newest_users():
+    # Get ten newest venues and artists
+
+    venues = (
+        db.session.query(
+            Venue.id, Venue.name, Venue.city, Venue.state, Venue.image_link
+        )
+        .order_by(Venue.joined_at.desc())
+        .limit(10)
+        .all()
+    )
+    artists = (
+        db.session.query(Artist.id, Artist.name, Artist.image_link)
+        .order_by(Artist.joined_at.desc())
+        .limit(10)
+        .all()
+    )
+    return venues, artists
+
+
 @app.route("/")
 def index():
-    return render_template("pages/home.html")
+
+    venues, artists = get_newest_users()
+
+    return render_template("pages/home.html", venues=venues, artists=artists)
 
 
 #  Venues
@@ -67,7 +93,9 @@ def venues():
 
     data = []
 
-    for location in db.session.query(Venue.city, Venue.state).distinct().all():
+    for location in (
+        db.session.query(Venue.city, Venue.state).distinct().order_by(Venue.city).all()
+    ):
         venue_query = (
             db.session.query(Venue.id, Venue.name)
             .filter(Venue.state == location[1])
@@ -103,7 +131,11 @@ def search_venues():
     # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
     search_term = request.form.get("search_term", "")
     searched_venues = Venue.query.filter(
-        Venue.name.ilike("%" + search_term + "%")
+        or_(
+            Venue.name.ilike("%" + search_term + "%"),  # searches name or
+            db.func.concat(Venue.city, ", ", Venue.state)
+            == search_term,  # searches city
+        )
     ).all()
 
     response = {
@@ -205,6 +237,7 @@ def create_venue_submission():
             image_link=form.image_link.data,
             seeking_talent=form.seeking_talent.data,
             seeking_description=form.seeking_description.data,
+            joined_at=dt.now(),
         )
         db.session.add(venue)
         db.session.commit()
@@ -218,7 +251,9 @@ def create_venue_submission():
     finally:
         db.session.close()
 
-    return render_template("pages/home.html")
+    venues, artists = get_newest_users()
+
+    return render_template("pages/home.html", venues=venues, artists=artists)
 
 
 @app.route("/venues/<venue_id>/delete", methods=["DELETE"])
@@ -270,7 +305,11 @@ def search_artists():
 
     search_term = request.form.get("search_term", "")
     searched_artists = Artist.query.filter(
-        Artist.name.ilike("%" + search_term + "%")
+        or_(
+            Artist.name.ilike("%" + search_term + "%"),  # searches name or
+            db.func.concat(Artist.city, ", ", Artist.state)
+            == search_term,  # searches city, state
+        )
     ).all()
 
     response = {
@@ -450,6 +489,7 @@ def create_artist_submission():
             website=form.website_link.data,
             seeking_venue=form.seeking_venue.data,
             seeking_description=form.seeking_description.data,
+            joined_at=dt.now(),
         )
         print(artist)
         db.session.add(artist)
@@ -464,7 +504,9 @@ def create_artist_submission():
     finally:
         db.session.close()
 
-    return render_template("pages/home.html")
+    venues, artists = get_newest_users()
+
+    return render_template("pages/home.html", venues=venues, artists=artists)
 
 
 @app.route("/artists/<artist_id>/delete", methods=["DELETE"])
@@ -548,7 +590,9 @@ def create_show_submission():
     finally:
         db.session.close()
 
-    return render_template("pages/home.html")
+    venues, artists = get_newest_users()
+
+    return render_template("pages/home.html", venues=venues, artists=artists)
 
 
 @app.errorhandler(404)
