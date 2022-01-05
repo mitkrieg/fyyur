@@ -148,6 +148,17 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(int(data["current_category"]), 1)
         self.assertTrue(data["total_questions"], 3)
 
+    def test_404_category_id_invalid(self):
+        """Test if requested category id is out of range of categories"""
+        res = self.client().get("/categories/100/questions")
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)  # check for bad response for not found
+        self.assertEqual(data["success"], False)  # returns json indicating failure
+        self.assertEqual(
+            data["message"], "resource not found"  # returns correct error message
+        )
+
 
 # Make the tests conveniently executable
 if __name__ == "__main__":

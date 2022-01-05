@@ -6,6 +6,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
 
+from sqlalchemy.orm.query import Query
+from sqlalchemy.sql.expression import func
+
 from models import setup_db, Question, Category
 
 QUESTIONS_PER_PAGE = 10
@@ -62,12 +65,12 @@ def create_app(test_config=None):
             return jsonify(
                 {
                     "success": True,
-                    "categories": [category.format() for category in categories],
+                    "categories": {cat.id: cat.type for cat in categories},
                     "total_categories": len(categories),
                 }
             )
         except:
-            abort(500)
+            abort(422)
 
     """
   @TODO: 
@@ -89,8 +92,10 @@ def create_app(test_config=None):
             selection = Question.query.order_by(Question.id).all()
             current_page = paginate(request, selection)
 
+            categories = {cat.id: cat.type for cat in Category.query.all()}
+
         except:
-            abort(500)
+            abort(422)
 
         if len(current_page) == 0:
             abort(404)
@@ -99,8 +104,10 @@ def create_app(test_config=None):
             {
                 "success": True,
                 "questions": current_page,
-                "current_page": request.args.get("page", 1, type=int),
+                "page": request.args.get("page", 1, type=int),
                 "total_questions": len(selection),
+                "current_category": None,
+                "categories": categories,
             }
         )
 
@@ -165,7 +172,16 @@ def create_app(test_config=None):
         answer = body.get("answer", None)
         difficulty = body.get("difficulty", None)
         category = body.get("category", None)
-        search_term = body.get("search_term", None)
+        search_term = body.get("searchTerm", None)
+
+        print(question_text)
+
+        if (
+            question_text == ""
+            or answer == ""
+            or question_text in [q.question for q in Question.query.all()]
+        ):
+            abort(400)
 
         try:
             if search_term:
@@ -192,7 +208,7 @@ def create_app(test_config=None):
                     difficulty=difficulty,
                     category=category,
                 )
-                print(new_question.answer)
+
                 new_question.insert()
 
                 selection = Question.query.order_by(Question.id).all()
@@ -219,6 +235,26 @@ def create_app(test_config=None):
   category to be shown. 
   """
 
+    @app.route("/categories/<category_id>/questions")
+    def get_questions_by_category(category_id):
+
+        try:
+            questions = Question.query.filter(Question.category == category_id).all()
+        except:
+            abort(422)
+
+        if len(questions) == 0:
+            abort(404)
+
+        return jsonify(
+            {
+                "success": True,
+                "questions": [question.format() for question in questions],
+                "total_questions": len(questions),
+                "current_category": category_id,
+            }
+        )
+
     """
   @TODO: 
   Create a POST endpoint to get questions to play the quiz. 
@@ -231,11 +267,50 @@ def create_app(test_config=None):
   and shown whether they were correct or not. 
   """
 
+    @app.route("/quizzes", methods=["POST"])
+    def generate_quiz():
+        print("1XXXXxxxxxxxxxxxxxx")
+        body = request.get_json()
+
+        previous_questions = body.get("previous_questions", None)
+        print("2XXXXxxxxxxxxxxxxxx")
+        quiz_category = body.get("quiz_category", None)
+        print(quiz_category)
+        print(previous_questions)
+
+        if quiz_category["id"] == 0:
+            random_question = (
+                Question.query.filter(Question.id.notin_(previous_questions))
+                .order_by(func.random())
+                .first()
+            )
+        else:
+            random_question = (
+                Question.query.filter(Question.category == quiz_category["id"])
+                .filter(Question.id.notin_(previous_questions))
+                .order_by(func.random())
+                .first()
+            )
+
+        if random_question is None:
+            return jsonify({"success": True})
+
+        print(random_question.question)
+
+        return jsonify({"success": True, "question": random_question.format()})
+
     """
   @TODO: 
   Create error handlers for all expected errors 
   including 404 and 422. 
   """
+
+    @app.errorhandler(400)
+    def not_found(error):
+        return (
+            jsonify({"success": False, "error": 400, "message": "bad request"}),
+            400,
+        )
 
     @app.errorhandler(404)
     def not_found(error):
@@ -245,9 +320,9 @@ def create_app(test_config=None):
         )
 
     @app.errorhandler(422)
-    def bad_request(error):
+    def unprocessable(error):
         return (
-            jsonify({"success": False, "error": 422, "message": "bad request"}),
+            jsonify({"success": False, "error": 422, "message": "unprocessable"}),
             422,
         )
 
