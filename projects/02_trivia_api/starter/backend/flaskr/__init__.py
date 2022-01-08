@@ -269,11 +269,9 @@ def create_app(test_config=None):
 
     @app.route("/quizzes", methods=["POST"])
     def generate_quiz():
-        print("1XXXXxxxxxxxxxxxxxx")
         body = request.get_json()
 
         previous_questions = body.get("previous_questions", None)
-        print("2XXXXxxxxxxxxxxxxxx")
         quiz_category = body.get("quiz_category", None)
         print(quiz_category)
         print(previous_questions)
@@ -298,6 +296,67 @@ def create_app(test_config=None):
         print(random_question.question)
 
         return jsonify({"success": True, "question": random_question.format()})
+
+    @app.route("/categories", methods=["POST"])
+    def create_category():
+        body = request.get_json()
+
+        category_name = body.get("category_name", None)
+        print(type(category_name))
+        print(category_name)
+
+        if (
+            category_name == ""
+            or category_name is None
+            or category_name in [cat.type for cat in Category.query.all()]
+        ):
+            abort(400)
+
+        else:
+            try:
+                new_category = Category(type=category_name)
+                print(new_category)
+                new_category.insert()
+                print("xxx")
+
+                all_categories = Category.query.all()
+
+                return jsonify(
+                    {
+                        "success": True,
+                        "new_category_id": new_category.id,
+                        "categories": [cat.format() for cat in all_categories],
+                        "total_categories": len(all_categories),
+                    }
+                )
+
+            except:
+                abort(422)
+
+    @app.route("/categories/<category_id>", methods=["DELETE"])
+    def delete_category(category_id):
+        category = Category.query.get(category_id)
+
+        if category is None:
+            abort(404)
+
+        else:
+
+            try:
+                category.delete()
+
+                all_categories = [cat.format() for cat in Category.query.all()]
+
+                return jsonify(
+                    {
+                        "success": True,
+                        "deleted_category_id": category_id,
+                        "categories": all_categories,
+                        "total_categories": len(all_categories),
+                    }
+                )
+            except:
+                abort(422)
 
     """
   @TODO: 
