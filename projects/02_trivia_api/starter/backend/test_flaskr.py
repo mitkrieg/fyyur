@@ -3,6 +3,7 @@ import unittest
 import json
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
+from sqlalchemy.sql.expression import null
 
 from flaskr import create_app
 from models import setup_db, Question, Category
@@ -29,6 +30,9 @@ class TriviaTestCase(unittest.TestCase):
             "category": 4,
         }
 
+        # create category for tests
+        self.test_category = {"category_name": "Math"}
+
         # binds the app to the current context
         with self.app.app_context():
             self.db = SQLAlchemy()
@@ -54,16 +58,6 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data["success"], True)  # successful return of json
         self.assertTrue(data["total_categories"])  # returns total categories
         self.assertTrue(len(data["categories"]))  # returns data for each category
-
-    # def test_no_found_categories(self):
-    #     res = self.client().get("/categories")
-    #     data = json.loads(res.data)
-
-    #     self.assertEqual(res.status_code, 422)  # error response
-    #     self.assertEqual(data["success"], False)  # return json indicating failure
-    #     self.assertEqual(
-    #         data["message"], "unprocessable"  # returns correct error message
-    #     )
 
     def test_get_questions_paginated(self):
         """Test for successful return of a page of questions"""
@@ -102,6 +96,42 @@ class TriviaTestCase(unittest.TestCase):
             ).all()
         )
 
+    def test_400_create_question_duplicate(self):
+        """Tests to see if error 400 works for duplicate questions"""
+        res = self.client().post(
+            "/questions",
+            json={
+                "answer": "Uruguay",
+                "category": 6,
+                "difficulty": 4,
+                "question": "Which country won the first ever soccer World Cup in 1930?",
+            },
+        )
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(data["success"], False)
+        self.assertEqual(
+            data["message"], "bad request: possible duplicate or empty question"
+        )
+
+    def test_422_unprocessable_create_questions(self):
+        "Tests for unprocess question creation"
+        res = self.client().post(
+            "/questions",
+            json={
+                "answer": "Japan",
+                "category": False,  # incorrect type should thow error
+                "difficulty": 4,
+                "question": "What country is known as the land of the rising sun?",
+            },
+        )
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 422)
+        self.assertEqual(data["success"], False)
+        self.assertEqual(data["message"], "unprocessable")
+
     def test_search_question_with_results(self):
         """Tests search functionality with results"""
         res = self.client().post("/questions", json={"search_term": "what"})
@@ -112,7 +142,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertTrue(data["total_questions"])
         self.assertTrue(len(data["questions"]), 8)
 
-    def test_search_question_with_results(self):
+    def test_search_question_with_no_results(self):
         """Tests search functionality without results"""
         res = self.client().post("/questions", json={"searchTerm": "qwert"})
         data = json.loads(res.data)
@@ -131,11 +161,22 @@ class TriviaTestCase(unittest.TestCase):
         res = self.client().delete("/questions/" + str(max_id.id))
         data = json.loads(res.data)
 
-        question = Question.query.get(32)
+        question = Question.query.get(max_id.id)
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data["success"], True)
         self.assertEqual(int(data["deleted"]), max_id.id)
+
+    def test_404_no_question_to_delete(self):
+        """Tests 404 error when id requested for deleteion is non-existent"""
+        res = self.client().delete("/questions/100000")
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)  # check for bad response for not found
+        self.assertEqual(data["success"], False)  # returns json indicating failure
+        self.assertEqual(
+            data["message"], "resource not found"  # returns correct error message
+        )
 
     def test_get_questions_by_category(self):
         """Tests ability to get questions by category"""
@@ -157,6 +198,52 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data["success"], False)  # returns json indicating failure
         self.assertEqual(
             data["message"], "resource not found"  # returns correct error message
+        )
+
+    def test_create_category(self):
+        """Tests for creation of new question in API using test question"""
+
+        res = self.client().post("/categories", json=self.test_category)
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data["success"], True)
+        self.assertTrue(Category.query.filter(Category.type == "Math").all())
+
+    def test_deleted_category(self):
+        """
+        Tests for deletion of requested questions. Deletes test question created by
+        test_create_question()
+        """
+        max_id = Category.query.order_by(Category.id.desc()).first()
+        res = self.client().delete("/categories/" + str(max_id.id))
+        data = json.loads(res.data)
+
+        category = Category.query.get(max_id.id)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data["success"], True)
+        self.assertEqual(int(data["deleted"]), max_id.id)
+
+    def test_404_no_category_to_delete(self):
+        """Tests 404 error when id requested for deleteion is non-existent"""
+        res = self.client().delete("/categories/100000")
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 404)  # check for bad response for not found
+        self.assertEqual(data["success"], False)  # returns json indicating failure
+        self.assertEqual(
+            data["message"], "resource not found"  # returns correct error message
+        )
+
+    def test_400_create_empty_category(self):
+        res = self.client().post("/categories", json={})
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(data["success"], False)
+        self.assertEqual(
+            data["message"], "bad request: possible duplicate or empty question"
         )
 
 

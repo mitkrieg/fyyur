@@ -70,7 +70,7 @@ def create_app(test_config=None):
                 }
             )
         except:
-            abort(422)
+            abort(500)
 
     """
   @TODO: 
@@ -174,12 +174,14 @@ def create_app(test_config=None):
         category = body.get("category", None)
         search_term = body.get("searchTerm", None)
 
-        print(question_text)
-
         if (
-            question_text == ""
-            or answer == ""
-            or question_text in [q.question for q in Question.query.all()]
+            (
+                question_text == ""
+                or answer == ""
+                or question_text in [q.question for q in Question.query.all()]
+            )
+            and (search_term is None)
+            and (question_text is not None)
         ):
             abort(400)
 
@@ -273,8 +275,6 @@ def create_app(test_config=None):
 
         previous_questions = body.get("previous_questions", None)
         quiz_category = body.get("quiz_category", None)
-        print(quiz_category)
-        print(previous_questions)
 
         if quiz_category["id"] == 0:
             random_question = (
@@ -293,8 +293,6 @@ def create_app(test_config=None):
         if random_question is None:
             return jsonify({"success": True})
 
-        print(random_question.question)
-
         return jsonify({"success": True, "question": random_question.format()})
 
     @app.route("/categories", methods=["POST"])
@@ -302,8 +300,6 @@ def create_app(test_config=None):
         body = request.get_json()
 
         category_name = body.get("category_name", None)
-        print(type(category_name))
-        print(category_name)
 
         if (
             category_name == ""
@@ -315,9 +311,7 @@ def create_app(test_config=None):
         else:
             try:
                 new_category = Category(type=category_name)
-                print(new_category)
                 new_category.insert()
-                print("xxx")
 
                 all_categories = Category.query.all()
 
@@ -350,7 +344,7 @@ def create_app(test_config=None):
                 return jsonify(
                     {
                         "success": True,
-                        "deleted_category_id": category_id,
+                        "deleted": category_id,
                         "categories": all_categories,
                         "total_categories": len(all_categories),
                     }
@@ -367,7 +361,13 @@ def create_app(test_config=None):
     @app.errorhandler(400)
     def not_found(error):
         return (
-            jsonify({"success": False, "error": 400, "message": "bad request"}),
+            jsonify(
+                {
+                    "success": False,
+                    "error": 400,
+                    "message": "bad request: possible duplicate or empty question",
+                }
+            ),
             400,
         )
 

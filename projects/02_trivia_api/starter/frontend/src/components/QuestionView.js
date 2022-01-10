@@ -122,6 +122,7 @@ class QuestionView extends Component {
     }
   }
 
+
   render() {
     return (
       <div className="question-view">
@@ -130,8 +131,8 @@ class QuestionView extends Component {
           <ul>
             {Object.keys(this.state.categories).map((id,) => (
               <li key={id} onClick={() => { this.getByCategory(id) }}>
+                <img className="category" src={`${this.state.categories[id].toLowerCase()}.svg`} onrror="this.onerror=null;this.src='default.svg';" alt="" />
                 {this.state.categories[id]}
-                <img className="category" src={`${this.state.categories[id].toLowerCase()}.svg`} onerror="this.onerror=null;this.src='default.svg';" alt="" />
               </li>
             ))}
           </ul>

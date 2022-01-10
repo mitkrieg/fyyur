@@ -55,7 +55,7 @@ class FormView extends Component {
       error: (error) => {
         console.log(error)
         if (error.status == 400) {
-          alert('Duplicate Question or Blank Question/Answer. Please try your request again')
+          alert('Duplicate or Blank Question/Answer. Please try your request again')
         }
         else if (error.status == 422) { alert('Unable to add question. Please try your request again') }
         return;
