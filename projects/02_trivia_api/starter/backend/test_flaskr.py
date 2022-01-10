@@ -31,7 +31,7 @@ class TriviaTestCase(unittest.TestCase):
         }
 
         # create category for tests
-        self.test_category = {"category_name": "Math"}
+        self.test_category = {"categoryName": "Math"}
 
         # binds the app to the current context
         with self.app.app_context():
@@ -245,6 +245,14 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(
             data["message"], "bad request: possible duplicate or empty question"
         )
+
+    def test_quiz(self):
+        """Tests for successful generation of quiz question"""
+        res = self.client().get("/quizzes")
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data["success"], True)
 
 
 # Make the tests conveniently executable

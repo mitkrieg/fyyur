@@ -30,12 +30,12 @@ def create_app(test_config=None):
     setup_db(app)
 
     """
-  @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
+  Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   """
     CORS(app)
 
     """
-  @TODO: Use the after_request decorator to set Access-Control-Allow
+  Use the after_request decorator to set Access-Control-Allow
   """
 
     def after_request(response):
@@ -48,7 +48,6 @@ def create_app(test_config=None):
         return response
 
     """
-  @TODO: 
   Create an endpoint to handle GET requests 
   for all available categories.
   """
@@ -57,8 +56,10 @@ def create_app(test_config=None):
     def get_categories():
 
         try:
+            # get all categories
             categories = Category.query.all()
 
+            # if none abort
             if len(categories) == 0:
                 abort(404)
 
@@ -73,7 +74,6 @@ def create_app(test_config=None):
             abort(500)
 
     """
-  @TODO: 
   Create an endpoint to handle GET requests for questions, 
   including pagination (every 10 questions). 
   This endpoint should return a list of questions, 
@@ -92,7 +92,12 @@ def create_app(test_config=None):
             selection = Question.query.order_by(Question.id).all()
             current_page = paginate(request, selection)
 
-            categories = {cat.id: cat.type for cat in Category.query.all()}
+            categories = {
+                cat.id: cat.type
+                for cat in Category.query.filter(
+                    Category.id.in_(set([cat.category for cat in selection]))
+                ).all()
+            }
 
         except:
             abort(422)
@@ -112,7 +117,6 @@ def create_app(test_config=None):
         )
 
     """
-  @TODO: 
   Create an endpoint to DELETE question using a question ID. 
 
   TEST: When you click the trash icon next to a question, the question will be removed.
@@ -140,10 +144,9 @@ def create_app(test_config=None):
                 }
             )
         except:
-            abort(422)
+            abort(500)
 
     """
-  @TODO: 
   Create an endpoint to POST a new question, 
   which will require the question and answer text, 
   category, and difficulty score.
@@ -154,7 +157,6 @@ def create_app(test_config=None):
   """
 
     """
-  @TODO: 
   Create a POST endpoint to get questions based on a search term. 
   It should return any questions for whom the search term 
   is a substring of the question. 
@@ -174,6 +176,7 @@ def create_app(test_config=None):
         category = body.get("category", None)
         search_term = body.get("searchTerm", None)
 
+        # prevent user from entering already existing question or empty string question/answer
         if (
             (
                 question_text == ""
@@ -186,6 +189,7 @@ def create_app(test_config=None):
             abort(400)
 
         try:
+            # if search term is present run search else add question
             if search_term:
                 search_results = (
                     Question.query.order_by(Question.id)
@@ -203,7 +207,8 @@ def create_app(test_config=None):
                         "total_questions": len(search_results),
                     }
                 )
-            else:
+            # otherwise create new question
+            elif question_text:
                 new_question = Question(
                     question=question_text,
                     answer=answer,
@@ -225,6 +230,8 @@ def create_app(test_config=None):
                         "total_questions": len(Question.query.all()),
                     }
                 )
+            else:
+                abort(400)
         except:
             abort(422)
 
@@ -271,36 +278,43 @@ def create_app(test_config=None):
 
     @app.route("/quizzes", methods=["POST"])
     def generate_quiz():
-        body = request.get_json()
+        try:
+            body = request.get_json()
 
-        previous_questions = body.get("previous_questions", None)
-        quiz_category = body.get("quiz_category", None)
+            previous_questions = body.get("previous_questions", None)
+            quiz_category = body.get("quiz_category", None)
 
-        if quiz_category["id"] == 0:
-            random_question = (
-                Question.query.filter(Question.id.notin_(previous_questions))
-                .order_by(func.random())
-                .first()
-            )
-        else:
-            random_question = (
-                Question.query.filter(Question.category == quiz_category["id"])
-                .filter(Question.id.notin_(previous_questions))
-                .order_by(func.random())
-                .first()
-            )
+            # all categories
+            if quiz_category["id"] == 0:
+                # get random question that has not been used previously
+                random_question = (
+                    Question.query.filter(Question.id.notin_(previous_questions))
+                    .order_by(func.random())
+                    .first()
+                )
+            # specific categories
+            else:
+                random_question = (
+                    Question.query.filter(Question.category == quiz_category["id"])
+                    .filter(Question.id.notin_(previous_questions))
+                    .order_by(func.random())
+                    .first()
+                )
+            # if no more questions just return true
+            if random_question is None:
+                return jsonify({"success": True})
 
-        if random_question is None:
-            return jsonify({"success": True})
-
-        return jsonify({"success": True, "question": random_question.format()})
+            return jsonify({"success": True, "question": random_question.format()})
+        except:
+            abort(500)
 
     @app.route("/categories", methods=["POST"])
     def create_category():
         body = request.get_json()
 
-        category_name = body.get("category_name", None)
+        category_name = body.get("categoryName", None)
 
+        # prevent user from adding empty string category or category that already exists
         if (
             category_name == ""
             or category_name is None
@@ -325,7 +339,7 @@ def create_app(test_config=None):
                 )
 
             except:
-                abort(422)
+                abort(500)
 
     @app.route("/categories/<category_id>", methods=["DELETE"])
     def delete_category(category_id):
@@ -350,7 +364,7 @@ def create_app(test_config=None):
                     }
                 )
             except:
-                abort(422)
+                abort(500)
 
     """
   @TODO: 
