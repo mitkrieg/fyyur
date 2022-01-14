@@ -52,7 +52,7 @@ def get_drinks(payload):
 """
 
 
-@app.route("/drink-details")
+@app.route("/drinks-detail")
 @requires_auth(permission="get:drink-details")
 def get_drink_details(payload):
 
@@ -85,10 +85,11 @@ def create_drink(payload):
     recipe = body.get("recipe", None)
 
     try:
-        new_drink = Drink(title=title, recipe=recipe)
+        new_drink = Drink(title=title, recipe=json.dumps([recipe]))
 
         new_drink.insert()
-    except:
+    except Exception as e:
+        print(e)
         abort(400)
 
     drinks = [drink.long() for drink in Drink.query.all()]
@@ -125,7 +126,7 @@ def edit_drink(payload, id):
             abort(404)
 
         drink.title = title
-        drink.recipe = json.loads(recipe)
+        drink.recipe = json.dumps([recipe])
 
         drink.update()
 
@@ -133,7 +134,7 @@ def edit_drink(payload, id):
         print(error)
         abort(422)
 
-    return jsonify({"success": True, "drinks": drink}), 200
+    return jsonify({"success": True, "drinks": [drink.long()]}), 200
 
 
 """
@@ -148,7 +149,7 @@ def edit_drink(payload, id):
 """
 
 
-@app.route("/drinks", methods=["DELETE"])
+@app.route("/drinks/<id>", methods=["DELETE"])
 @requires_auth(permission="delete:drinks")
 def delete_drink(payload, id):
 

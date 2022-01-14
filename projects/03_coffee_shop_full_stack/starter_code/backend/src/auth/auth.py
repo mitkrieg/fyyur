@@ -135,6 +135,7 @@ def verify_decode_jwt(token):
         )
 
     for key in jwts["keys"]:
+        print(key)
         if key["kid"] == unverified_header["kid"]:
             rsa_key = {
                 "kty": key["kty"],
@@ -168,7 +169,8 @@ def verify_decode_jwt(token):
                     401,
                 )
 
-            except Exception:
+            except Exception as e:
+                print(e)
                 raise AuthError(
                     {
                         "code": "invalid_header",
