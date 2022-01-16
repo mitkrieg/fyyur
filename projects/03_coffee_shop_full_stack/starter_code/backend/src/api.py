@@ -85,7 +85,7 @@ def create_drink(payload):
     recipe = body.get("recipe", None)
 
     try:
-        new_drink = Drink(title=title, recipe=json.dumps([recipe]))
+        new_drink = Drink(title=title, recipe=json.dumps(recipe))
 
         new_drink.insert()
     except Exception as e:
@@ -154,6 +154,7 @@ def edit_drink(payload, id):
 def delete_drink(payload, id):
 
     drink = Drink.query.get(id)
+    print(drink)
 
     if drink is None:
         abort(404)
@@ -164,7 +165,7 @@ def delete_drink(payload, id):
         print(error)
         abort(422)
 
-    return {"success": True, "delete": id}
+    return jsonify({"success": True, "delete": id})
 
 
 # Error Handling
