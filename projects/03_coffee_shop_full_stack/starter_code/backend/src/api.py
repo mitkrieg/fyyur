@@ -57,6 +57,7 @@ def get_drinks(payload):
 def get_drink_details(payload):
 
     drinks = [drink.long() for drink in Drink.query.all()]
+    print(drinks)
 
     if len(drinks) == 0:
         abort(404)
@@ -126,7 +127,7 @@ def edit_drink(payload, id):
             abort(404)
 
         drink.title = title
-        drink.recipe = json.dumps([recipe])
+        drink.recipe = json.dumps(recipe)
 
         drink.update()
 
