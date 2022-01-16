@@ -36,6 +36,8 @@ class AuthError(Exception):
 
 def get_token_auth_header():
     auth = request.headers.get("Authorization", None)
+
+    # if no authorization present in header return 401
     if not auth:
         raise AuthError(
             {
@@ -45,6 +47,7 @@ def get_token_auth_header():
             401,
         )
 
+    # Split token and check for bearer type, if not bearer return 401
     auth_parts = auth.split()
     if auth_parts[0].lower() != "bearer":
         raise AuthError(
@@ -55,11 +58,13 @@ def get_token_auth_header():
             401,
         )
 
+    # if the split of token only resulted in a list with len of 1 (part of auth is missing) return 401
     elif len(auth_parts) == 1:
         raise AuthError(
             {"code": "invalid_header", "description": "Token not found"}, 401
         )
 
+    # if the split of token results in a list with len more than 2 (extra parts) return 401
     elif len(auth_parts) > 2:
         raise AuthError(
             {
@@ -69,6 +74,7 @@ def get_token_auth_header():
             401,
         )
 
+    # select token from auth
     token = auth_parts[1]
 
     return token
@@ -88,15 +94,19 @@ def get_token_auth_header():
 
 
 def check_permissions(permission, payload):
+    # check for permissions list included in payload otherwise return 403
+    print(permission)
+    print(payload)
     if "permissions" not in payload:
         raise AuthError(
             {
                 "code": "invalid_claims",
                 "description": "Permissions not included in JWT",
             },
-            400,
+            403,
         )
 
+    # check that permission in payload required to perform request is allowed otherwise return 403
     if permission not in payload["permissions"]:
         raise AuthError(
             {
@@ -124,6 +134,7 @@ def check_permissions(permission, payload):
 
 
 def verify_decode_jwt(token):
+    # decode and parse jwt
     jsonurl = urlopen(f"https://{AUTH0_DOMAIN}/.well-known/jwks.json")
     jwts = json.loads(jsonurl.read())
     unverified_header = jwt.get_unverified_header(token)
@@ -134,8 +145,9 @@ def verify_decode_jwt(token):
             {"code": "invalid_header", "description": "Authorization malformed"}, 401
         )
 
+    # loop over keys in jwts and parse parts
     for key in jwts["keys"]:
-        print(key)
+
         if key["kid"] == unverified_header["kid"]:
             rsa_key = {
                 "kty": key["kty"],
@@ -146,6 +158,7 @@ def verify_decode_jwt(token):
             }
 
         if rsa_key:
+            # if jwt is decodeable return payload
             try:
                 payload = jwt.decode(
                     token,
@@ -155,11 +168,13 @@ def verify_decode_jwt(token):
                     issuer=f"https://{AUTH0_DOMAIN}/",
                 )
                 return payload
+            # if jwt is expired return 401
             except jwt.ExpiredSignatureError:
                 raise AuthError(
                     {"code": "token_expired", "description": "token expired"}, 401
                 )
 
+            # if jwt looks for incorrect audience return 401
             except jwt.JWTClaimsError:
                 raise AuthError(
                     {
@@ -169,6 +184,7 @@ def verify_decode_jwt(token):
                     401,
                 )
 
+            # catch other jwt parsing error
             except Exception as e:
                 print(e)
                 raise AuthError(
@@ -179,6 +195,7 @@ def verify_decode_jwt(token):
                     400,
                 )
 
+        # if no keys are found raise error
         raise AuthError(
             {
                 "code": "invalid_headers",
@@ -204,8 +221,11 @@ def requires_auth(permission=""):
     def requires_auth_decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
+            # get token
             token = get_token_auth_header()
+            # decode token
             payload = verify_decode_jwt(token)
+            # validate permissions for token
             check_permissions(permission, payload)
             return f(payload, *args, **kwargs)
 

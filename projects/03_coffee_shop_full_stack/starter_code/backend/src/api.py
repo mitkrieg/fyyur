@@ -31,11 +31,12 @@ db_drop_and_create_all()
 
 
 @app.route("/drinks")
-@requires_auth(permission="get:drinks")
-def get_drinks(payload):
+def get_drinks():
 
+    # get all drinks in short form
     drinks = [drink.short() for drink in Drink.query.all()]
 
+    # if no drinks return 404
     if len(drinks) == 0:
         abort(404)
 
@@ -56,9 +57,11 @@ def get_drinks(payload):
 @requires_auth(permission="get:drink-details")
 def get_drink_details(payload):
 
+    # get all drinks in long form
     drinks = [drink.long() for drink in Drink.query.all()]
     print(drinks)
 
+    # if no drinks return 404
     if len(drinks) == 0:
         abort(404)
 
@@ -80,11 +83,13 @@ def get_drink_details(payload):
 @requires_auth(permission="post:drinks")
 def create_drink(payload):
 
+    # get info from request
     body = request.get_json()
 
     title = body.get("title", None)
     recipe = body.get("recipe", None)
 
+    # attempt creating drink otherqise return 400
     try:
         new_drink = Drink(title=title, recipe=json.dumps(recipe))
 
@@ -93,6 +98,7 @@ def create_drink(payload):
         print(e)
         abort(400)
 
+    # return all drinks including new drink
     drinks = [drink.long() for drink in Drink.query.all()]
 
     return jsonify({"success": True, "drinks": drinks}), 200
@@ -114,23 +120,31 @@ def create_drink(payload):
 @app.route("/drinks/<id>", methods=["PATCH"])
 @requires_auth(permission="patch:drinks")
 def edit_drink(payload, id):
+    print(payload)
 
+    # get information to be edited
     body = request.get_json()
 
-    title = body.get("title", None)
-    recipe = body.get("recipe", None)
+    new_title = body.get("title", None)
+    new_recipe = body.get("recipe", None)
 
+    # attempt to edit drink
     try:
         drink = Drink.query.get(id)
 
+        # if drink to edit is not found return 404
         if drink is None:
             abort(404)
 
-        drink.title = title
-        drink.recipe = json.dumps(recipe)
+        if new_title is not None:
+            drink.title = new_title
+
+        if new_recipe is not None:
+            drink.recipe = json.dumps(new_recipe)
 
         drink.update()
 
+    # if edit drink does not work return 422
     except Exception as error:
         print(error)
         abort(422)
@@ -154,12 +168,15 @@ def edit_drink(payload, id):
 @requires_auth(permission="delete:drinks")
 def delete_drink(payload, id):
 
+    # attempt to find drink
     drink = Drink.query.get(id)
     print(drink)
 
+    # if drink is not found return 404
     if drink is None:
         abort(404)
 
+    # attempt to delete found drink otherwise return 422
     try:
         drink.delete()
     except Exception as error:
